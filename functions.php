@@ -159,8 +159,11 @@ add_action( 'elementor_pro/forms/new_record', function( $record, $ajax_handler )
 		$fields[ $id ] = $field['value'];
 	}
 
-	$output['time'] = convert_swim_time($fields);
-	$output['description'] = get_description($fields);
-		
+	$form_name = $record->get_form_settings( 'form_name' );
+    if ( 'Swim Time Converter' == $form_name ) {
+		$output['time'] = convert_swim_time($fields);
+		$output['description'] = get_description($fields);
+    }
+
 	$ajax_handler->add_response_data( true, $output );
 }, 10, 2);

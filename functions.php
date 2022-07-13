@@ -22,6 +22,12 @@ function hello_elementor_child_enqueue_scripts() {
 }
 add_action( 'wp_enqueue_scripts', 'hello_elementor_child_enqueue_scripts', 20 );
 
+// Link author name to about page
+add_filter( 'author_link', 'my_author_link' );
+function my_author_link() {
+    return home_url( 'about/' );
+}
+
 // for lcm, first column men, second column women
 // assumes that from or to is scy
 function get_conversion_factor($event, $gender, $from, $to) {

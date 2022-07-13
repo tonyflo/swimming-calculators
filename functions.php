@@ -151,6 +151,51 @@ function get_description($fields) {
 	return $text;
 }
 
+function pool_to_distance($pool_type) {
+	return substr($pool_type, 0, 1) == 'l' ? 50.0 : 25.0;
+}
+
+function pool_to_unit($pool_type) {
+	return substr($pool_type, -1) == 'y' ? 'yard' : 'meter';
+}
+
+function distance_to_miles($swam_distance, $pool_type) {
+	$y2m = 0.9144; // yards in a meter
+	$m2mi = 1609.344; // meters in a mile
+
+	$meters = $swam_distance;
+	if ($pool_type == 'scy') {
+		$meters = $swam_distance * $y2m;
+	}
+	
+	$miles = $meters / $m2mi;
+	
+	return $miles;
+}
+
+function calculate_swim_lap_distance($fields) {
+	$num_laps = $fields['num_laps'];
+	$pool_type = $fields['pool_type'];
+	
+	$pool_distance = pool_to_distance($pool_type);
+	$unit = pool_to_unit($pool_type);
+	$swam_distance = $num_laps * $pool_distance;
+	$miles = distance_to_miles($swam_distance, $pool_type);
+	$plural = $num_laps > 1 ? 's' : '';
+	
+	$text = sprintf("%s lap%s in a %s %s pool converts to %s %ss which is about %s miles.",
+					number_format($num_laps),
+					$plural,
+					$pool_distance,
+					$unit,
+					number_format($swam_distance),
+					$unit,
+					number_format($miles, 2),
+				   );
+	
+	return $text;
+}
+
 add_action( 'elementor_pro/forms/new_record', function( $record, $ajax_handler ) {
 	
 	$raw_fields = $record->get( 'fields' );
@@ -163,7 +208,9 @@ add_action( 'elementor_pro/forms/new_record', function( $record, $ajax_handler )
     if ( 'Swim Time Converter' == $form_name ) {
 		$output['time'] = convert_swim_time($fields);
 		$output['description'] = get_description($fields);
-    }
+    } elseif( 'Swim Lap Distance Calculator' == $form_name ) {
+		$output['text'] = calculate_swim_lap_distance($fields);
+	}
 
 	$ajax_handler->add_response_data( true, $output );
 }, 10, 2);

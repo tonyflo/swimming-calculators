@@ -28,6 +28,10 @@ function my_author_link() {
     return home_url( 'about/' );
 }
 
+$Y2M = 0.9144; // yards in a meter
+$Y2MI = 1760; // yards in a mile
+$M2MI = 1609.344; // meters in a mile
+
 // for lcm, first column men, second column women
 // assumes that from or to is scy
 function get_conversion_factor($event, $gender, $from, $to) {
@@ -108,7 +112,7 @@ function time_to_string($m, $s, $d) {
 function format_time($output) {
 	$mm = floor($output / 60);
 	$ss = floor($output % 60);
-	$dd = floor(($output - floor($output)) * 100);
+	$dd = intval(($output - intval($output)) * 100);
 	return time_to_string($mm, $ss, $dd);
 }
 
@@ -166,15 +170,14 @@ function pool_to_unit($pool_type) {
 }
 
 function distance_to_miles($swam_distance, $pool_type) {
-	$y2m = 0.9144; // yards in a meter
-	$m2mi = 1609.344; // meters in a mile
-
+	global $Y2M, $M2MI;
+	
 	$meters = $swam_distance;
 	if ($pool_type == 'scy') {
-		$meters = $swam_distance * $y2m;
+		$meters = $swam_distance * $Y2M;
 	}
 	
-	$miles = $meters / $m2mi;
+	$miles = $meters / $M2MI;
 	
 	return $miles;
 }
@@ -198,7 +201,51 @@ function calculate_swim_lap_distance($fields) {
 					$unit,
 					number_format($miles, 2),
 				   );
-	
+
+	return $text;
+}
+
+function time_as_text($hour, $min, $sec, $dec) {
+	$h = $hour > 0 ? $hour . " hours " : "";
+	$m = $min > 0 ? $min . " minutes " : "";
+	$d = $dec > 0 ? "." . str_pad($dec, 2, '0', STR_PAD_LEFT) : "";
+	$s = $sec > 0 ? $sec . $d . " seconds " : "";
+	return $h . $m . $s;
+}
+
+function calculate_100_pace_in_sec($h, $m, $s, $d, $distance) {
+	$seconds = ($h * 60 * 60) + ($m * 60) + $s + ($d / 100);
+	return $seconds / ($distance / 100); // pace per 100
+}
+
+function calculate_mph($sec_per_100, $unit) {
+	global $M2MI, $Y2MI;
+
+	$factor = $unit == 'meters' ? $M2MI : $Y2MI;
+	return (100/$sec_per_100) * (1/$factor) * (60 * 60);
+}
+
+function calculate_swim_pace($fields) {
+	$distance = $fields['distance'];
+	$unit = $fields['unit'];
+	$hour = $fields['hours'];
+	$min = $fields['minutes'];
+	$sec = $fields['seconds'];
+	$dec = $fields['decimal'];
+
+	$time = time_as_text($hour, $min, $sec, $dec);
+	$sec_per_100 = calculate_100_pace_in_sec($hour, $min, $sec, $dec, $distance);
+	$mph = calculate_mph($sec_per_100, $unit);
+
+	$text = sprintf("Swimming %s %s in %sis a %s pace per 100 %s at a speed of %s MPH.",
+					$distance,
+					$unit,
+					$time,
+					format_time($sec_per_100),
+					$unit,
+					number_format($mph, 2),
+				   );
+
 	return $text;
 }
 
@@ -216,6 +263,8 @@ add_action( 'elementor_pro/forms/new_record', function( $record, $ajax_handler )
 		$output['description'] = get_description($fields);
     } elseif( 'Swim Lap Distance Calculator' == $form_name ) {
 		$output['text'] = calculate_swim_lap_distance($fields);
+	} elseif( 'Swim Pace Calculator' == $form_name ) {
+		$output['text'] = calculate_swim_pace($fields);
 	}
 
 	$ajax_handler->add_response_data( true, $output );
